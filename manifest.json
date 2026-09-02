@@ -1,0 +1,10 @@
+{
+  "id": "atomic-cards",
+  "name": "Atomic Cards",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "把原子文档以内联卡片墙的形式组合进章节文档，支持段落级引用与递归嵌套，卡片可就地展开正文。",
+  "author": "1to3fall5",
+  "authorUrl": "https://github.com/1to3fall5",
+  "isDesktopOnly": false
+}
