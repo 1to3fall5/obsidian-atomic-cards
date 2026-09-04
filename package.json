@@ -1,6 +1,6 @@
 {
   "name": "atomic-cards",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "把原子文档以内联卡片墙的形式组合进章节文档（transclusion cards）。",
   "main": "main.js",
   "scripts": {
