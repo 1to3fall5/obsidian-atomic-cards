@@ -18,7 +18,6 @@
    题头文字用纯白 #FFFFFF。
    ══════════════════════════════════════════════════════════ */
 :root {
-  --ac-stage: #EBEDF0;        /* 页面舞台 */
   --ac-card: #FFFFFF;         /* 卡片 */
   --ac-body: #F5F6F8;         /* 内容展开区 */
   --ac-border: #E4E7EC;
@@ -40,13 +39,13 @@
   --ac-green: #15803D;
   --ac-green-soft: rgba(34, 197, 94, 0.12);
 
-  --ac-shadow: 0 1px 3px rgba(20, 23, 28, 0.05);
-  --ac-shadow-hover: 0 4px 14px rgba(20, 23, 28, 0.10);
-  --ac-shadow-nest: 0 2px 6px rgba(20, 23, 28, 0.08);
+  /* 页面不再染色，卡片的"浮起"主要靠阴影，所以亮色的阴影比常规略强 */
+  --ac-shadow: 0 2px 6px rgba(20, 23, 28, 0.09);
+  --ac-shadow-hover: 0 6px 18px rgba(20, 23, 28, 0.14);
+  --ac-shadow-nest: 0 2px 8px rgba(20, 23, 28, 0.11);
 }
 
 .theme-dark {
-  --ac-stage: #101114;
   --ac-card: #23262C;
   --ac-body: #191B1F;
   --ac-border: #33373F;
@@ -272,26 +271,12 @@
 }
 
 /* ══════════════════════════════════════════════════════════
-   六、页面舞台底色：让卡片"浮"起来
-   ⚠️ 只作用于【亮色主题】—— 白底页面必须压暗一档，白卡片才浮得起来。
-      深色主题下页面本来就暗，卡片靠自身配色即可分层，
-      所以完全不碰页面色，交还给 Obsidian 原生（层次反而更干净）。
+   六、（已移除）页面舞台底色
+   原本靠把页面压暗一档来衬托白卡片，但会改动 Obsidian 全局外观。
+   现在【不碰页面色】，保持界面原生颜色 ——
+   卡片的浮起感改由边框 + 阴影承担（见 --ac-shadow 系列）。
+   想恢复的话，把 --ac-stage 加回变量表并对下面选择器设 background：
 
-   ⚠️ .markdown-preview-view 这个类名【嵌入内容内部也在用】，
-      必须用 :not() 排除，否则每张卡片的内容区都会被染成页面色。
+   .markdown-preview-view:not(.markdown-embed .markdown-preview-view) { ... }
+   ⚠️ 务必保留 :not() 排除嵌入内部，否则会污染卡片内容区。
    ══════════════════════════════════════════════════════════ */
-.theme-light .markdown-preview-view:not(.markdown-embed .markdown-preview-view),
-.theme-light .markdown-reading-view:not(.markdown-embed .markdown-reading-view),
-.theme-light .markdown-source-view:not(.markdown-embed .markdown-source-view),
-.theme-light .mod-cm6 .cm-editor:not(.markdown-embed .cm-editor),
-.theme-light .mod-cm6 .cm-scroller:not(.markdown-embed .cm-scroller) {
-  background: var(--ac-stage) !important;
-  background-color: var(--ac-stage) !important;
-}
-
-/* 工作区留白统一，避免四周露出不同色的边（同样只在亮色下） */
-.theme-light .workspace-split.mod-root,
-.theme-light .workspace-tabs .workspace-leaf,
-.theme-light .workspace-leaf-content {
-  background: var(--ac-stage) !important;
-}
