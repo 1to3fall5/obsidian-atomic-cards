@@ -273,21 +273,25 @@
 
 /* ══════════════════════════════════════════════════════════
    六、页面舞台底色：让卡片"浮"起来
+   ⚠️ 只作用于【亮色主题】—— 白底页面必须压暗一档，白卡片才浮得起来。
+      深色主题下页面本来就暗，卡片靠自身配色即可分层，
+      所以完全不碰页面色，交还给 Obsidian 原生（层次反而更干净）。
+
    ⚠️ .markdown-preview-view 这个类名【嵌入内容内部也在用】，
       必须用 :not() 排除，否则每张卡片的内容区都会被染成页面色。
    ══════════════════════════════════════════════════════════ */
-.markdown-preview-view:not(.markdown-embed .markdown-preview-view),
-.markdown-reading-view:not(.markdown-embed .markdown-reading-view),
-.markdown-source-view:not(.markdown-embed .markdown-source-view),
-.mod-cm6 .cm-editor:not(.markdown-embed .cm-editor),
-.mod-cm6 .cm-scroller:not(.markdown-embed .cm-scroller) {
+.theme-light .markdown-preview-view:not(.markdown-embed .markdown-preview-view),
+.theme-light .markdown-reading-view:not(.markdown-embed .markdown-reading-view),
+.theme-light .markdown-source-view:not(.markdown-embed .markdown-source-view),
+.theme-light .mod-cm6 .cm-editor:not(.markdown-embed .cm-editor),
+.theme-light .mod-cm6 .cm-scroller:not(.markdown-embed .cm-scroller) {
   background: var(--ac-stage) !important;
   background-color: var(--ac-stage) !important;
 }
 
-/* 工作区留白统一，避免四周露出不同色的边 */
-.workspace-split.mod-root,
-.workspace-tabs .workspace-leaf,
-.workspace-leaf-content {
+/* 工作区留白统一，避免四周露出不同色的边（同样只在亮色下） */
+.theme-light .workspace-split.mod-root,
+.theme-light .workspace-tabs .workspace-leaf,
+.theme-light .workspace-leaf-content {
   background: var(--ac-stage) !important;
 }
