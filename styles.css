@@ -1,7 +1,7 @@
 /* ==========================================================================
  * Atomic Cards — 插件样式
  *
- * 配色三层：头部（图标 / 标题 / 标签 / 徽章 / 按钮）最浅 → 摘要中等 → 正文最深
+ * 配色：题头（图标 / 标题）最亮 --text-normal → 标签 / 徽章 / 日期 / 按钮 --text-muted → 正文与摘要 --text-muted
  * 所有层级都用同一套配色：嵌套的小卡片不会因为"在里面"就整体变灰
  * ======================================================================== */
 
@@ -68,7 +68,7 @@
   min-width: 0;
   cursor: pointer;
   user-select: none;
-  color: var(--text-faint);
+  color: var(--text-normal);
 }
 
 .ac-card__thumb {
@@ -78,7 +78,7 @@
   flex: 0 0 16px;
   width: 16px;
   height: 16px;
-  color: var(--text-faint);
+  color: var(--text-normal);
 }
 
 .ac-card__thumb svg {
@@ -99,7 +99,7 @@
   font-weight: 600;
   font-size: 0.95em;
   line-height: 1.35;
-  color: var(--text-faint);
+  color: var(--text-normal);
   text-decoration: none;
   cursor: pointer;
   overflow: hidden;
@@ -114,7 +114,7 @@
 .ac-card__missing {
   flex: 0 0 auto;
   font-size: 0.68em;
-  color: var(--text-faint);
+  color: var(--text-muted);
   border: 1px dashed var(--background-modifier-border);
   border-radius: 999px;
   padding: 0 6px;
@@ -133,7 +133,7 @@
 
 .ac-tag {
   font-size: 0.68em;
-  color: var(--text-faint);
+  color: var(--text-muted);
   background: var(--background-modifier-hover);
   border-radius: 4px;
   padding: 0 5px;
@@ -146,7 +146,7 @@
   gap: 6px;
   flex: 0 0 auto;
   font-size: 0.7em;
-  color: var(--text-faint);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -154,7 +154,7 @@
   background: var(--background-modifier-hover);
   border-radius: 999px;
   padding: 1px 7px;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .ac-badge--type {
@@ -180,7 +180,7 @@
   align-items: center;
   gap: 3px;
   font-size: 0.72em;
-  color: var(--text-faint);
+  color: var(--text-muted);
   background: transparent;
   border: none;
   border-radius: 6px;
@@ -192,7 +192,7 @@
 
 .ac-btn:hover {
   background: var(--background-modifier-hover);
-  color: var(--text-muted);
+  color: var(--text-normal);
 }
 
 .ac-btn__icon {
@@ -229,7 +229,7 @@
   margin-top: 1px;
   font-size: 0.9em;
   line-height: 1.6;
-  color: var(--text-normal);
+  color: var(--text-muted);
 }
 
 .ac-card__body > *:first-child {
@@ -273,7 +273,7 @@
   margin: 0.5em 0;
   border-left: 2px solid var(--background-modifier-border);
   padding-left: 10px;
-  color: var(--text-muted);
+  color: var(--text-faint);
 }
 
 /* -------------------- 知识点小卡片（size: small）---------------------- */
