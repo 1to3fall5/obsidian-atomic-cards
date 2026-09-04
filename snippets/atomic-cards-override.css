@@ -1,33 +1,98 @@
 /* ==========================================================================
- * Atomic Cards 覆盖样式 · 方案 C：白卡片 + 灰色内容区
+ * Atomic Cards 覆盖样式 · 方案 C（明暗双主题版）
  *
- * 结构：题头区 = 白色（卡片本色） | 内容展开区 = 灰色底 #F5F6F8
- * 文字：深色可读，对齐 web-books 浅色方案（#1A1D23 / #3A3F47）
- * 嵌套：条目卡片白底，浮在灰色内容区上
+ * 结构：题头区 = 卡片本色 | 内容展开区 = 比卡片深一档的底色
+ * 层次（亮度递增）：页面舞台 → 内容区 → 卡片
+ * 嵌套：条目卡片浮在内容区上，层级循环
+ *
+ * 全部颜色走 CSS 变量，在 .theme-light / .theme-dark 下各定义一套，
+ * 跟随 Obsidian 主题自动切换（默认取亮色值）。
  *
  * 关掉本 snippet 即回到插件自带样式。
  * ======================================================================== */
 
 /* ══════════════════════════════════════════════════════════
-   一、卡片容器：白底 + 细边框 + 轻阴影
+   零、配色变量
+   默认（亮色 / moonstone）已按实际效果调好；
+   .theme-dark 下整体镜像：舞台最深、内容区中、卡片最亮，
+   题头文字用纯白 #FFFFFF。
    ══════════════════════════════════════════════════════════ */
-.ac-card {
-  background: #FFFFFF !important;
-  border: 1px solid #E4E7EC !important;
-  box-shadow: 0 1px 3px rgba(20, 23, 28, 0.05);
+:root {
+  --ac-stage: #EBEDF0;        /* 页面舞台 */
+  --ac-card: #FFFFFF;         /* 卡片 */
+  --ac-body: #F5F6F8;         /* 内容展开区 */
+  --ac-border: #E4E7EC;
+  --ac-border-hover: #D8DCE3;
+
+  --ac-title: #1A1D23;        /* 题头文字 */
+  --ac-text: #3A3F47;         /* 正文 */
+  --ac-muted: #5A6069;        /* 标签 / 日期 / 徽章 / 按钮 */
+  --ac-faint: #6B7280;        /* 摘要 / 引用块 */
+
+  --ac-chip: #EDEFF2;
+  --ac-chip-hover: #E3E6EB;
+  --ac-code-bg: #FFFFFF;
+  --ac-code-fg: #2E3138;
+
+  --ac-link: #2563EB;
+  --ac-accent: #2563EB;
+  --ac-accent-soft: rgba(59, 130, 246, 0.12);
+  --ac-green: #15803D;
+  --ac-green-soft: rgba(34, 197, 94, 0.12);
+
+  --ac-shadow: 0 1px 3px rgba(20, 23, 28, 0.05);
+  --ac-shadow-hover: 0 4px 14px rgba(20, 23, 28, 0.10);
+  --ac-shadow-nest: 0 2px 6px rgba(20, 23, 28, 0.08);
 }
-.ac-card:hover {
-  border-color: #D8DCE3 !important;
-  box-shadow: 0 4px 14px rgba(20, 23, 28, 0.10);
+
+.theme-dark {
+  --ac-stage: #101114;
+  --ac-card: #23262C;
+  --ac-body: #191B1F;
+  --ac-border: #33373F;
+  --ac-border-hover: #474C57;
+
+  --ac-title: #FFFFFF;
+  --ac-text: #A8ADB7;
+  --ac-muted: #868C97;
+  --ac-faint: #757B85;
+
+  --ac-chip: rgba(255, 255, 255, 0.07);
+  --ac-chip-hover: rgba(255, 255, 255, 0.12);
+  --ac-code-bg: #14161A;
+  --ac-code-fg: #C8CCD4;
+
+  --ac-link: #7FB3FF;
+  --ac-accent: #9CC6FF;
+  --ac-accent-soft: rgba(127, 179, 255, 0.16);
+  --ac-green: #7BD6A6;
+  --ac-green-soft: rgba(74, 222, 150, 0.16);
+
+  --ac-shadow: 0 1px 3px rgba(0, 0, 0, 0.30);
+  --ac-shadow-hover: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --ac-shadow-nest: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 /* ══════════════════════════════════════════════════════════
-   二、题头区：白色（卡片本色），深色标题
+   一、卡片容器
+   ══════════════════════════════════════════════════════════ */
+.ac-card {
+  background: var(--ac-card) !important;
+  border: 1px solid var(--ac-border) !important;
+  box-shadow: var(--ac-shadow);
+}
+.ac-card:hover {
+  border-color: var(--ac-border-hover) !important;
+  box-shadow: var(--ac-shadow-hover);
+}
+
+/* ══════════════════════════════════════════════════════════
+   二、题头区
    ══════════════════════════════════════════════════════════ */
 .ac-card__head,
 .ac-card__thumb,
 .ac-card__title {
-  color: #1A1D23 !important;
+  color: var(--ac-title) !important;
 }
 .ac-card__title {
   text-decoration: none !important;
@@ -40,38 +105,38 @@
 .ac-card__meta,
 .ac-badge,
 .ac-btn {
-  color: #5A6069 !important;
+  color: var(--ac-muted) !important;
 }
 .ac-btn:hover {
-  color: #1A1D23 !important;
-  background: #EDEFF2 !important;
+  color: var(--ac-title) !important;
+  background: var(--ac-chip-hover) !important;
 }
 .ac-tag,
 .ac-badge {
-  background: #EDEFF2 !important;
+  background: var(--ac-chip) !important;
 }
 .ac-badge--type {
-  background: rgba(59, 130, 246, 0.12) !important;
-  color: #2563EB !important;
+  background: var(--ac-accent-soft) !important;
+  color: var(--ac-accent) !important;
 }
 .ac-badge--status {
-  background: rgba(34, 197, 94, 0.12) !important;
-  color: #15803D !important;
+  background: var(--ac-green-soft) !important;
+  color: var(--ac-green) !important;
 }
 
-/* 摘要（收起时显示，白底上） */
+/* 摘要（收起时显示） */
 .ac-card__summary {
-  color: #6B7280 !important;
+  color: var(--ac-faint) !important;
 }
 
 /* ══════════════════════════════════════════════════════════
-   三、内容区：灰色底 #F5F6F8
-   负 margin 让灰底贴到卡片左右下边缘（卡片 padding 是 8px 12px）
+   三、内容区
+   负 margin 让底色贴到卡片左右下边缘（卡片 padding 是 8px 12px）
    正文是 Obsidian 嵌入渲染的，color 必须逐层下沉才到得了文字
    ══════════════════════════════════════════════════════════ */
 .ac-card__body {
-  background: #F5F6F8 !important;
-  border-top: 1px solid #E4E7EC !important;
+  background: var(--ac-body) !important;
+  border-top: 1px solid var(--ac-border) !important;
   margin: 6px -12px -8px !important;
   padding: 10px 12px !important;
 }
@@ -91,10 +156,10 @@
 .ac-card__body .markdown-preview-view li,
 .ac-card__body .markdown-preview-view ul,
 .ac-card__body .markdown-preview-view ol {
-  color: #3A3F47 !important;
+  color: var(--ac-text) !important;
 }
 
-/* 嵌入容器只清边距和底色，透出灰色内容区 */
+/* 嵌入容器只清底色，透出内容区背景 */
 .ac-card__body .markdown-embed,
 .ac-card__body .internal-embed,
 .ac-card__body .markdown-embed-content,
@@ -105,21 +170,21 @@
   background-color: transparent !important;
 }
 
-/* 引用块：比正文浅一档 */
+/* 引用块 */
 .ac-card__body blockquote,
 .ac-card__body blockquote p,
 .ac-card__body .markdown-preview-view blockquote,
 .ac-card__body .markdown-preview-view blockquote p {
-  color: #6B7280 !important;
+  color: var(--ac-faint) !important;
 }
 .ac-card__body blockquote {
-  border-left-color: #D8DCE3 !important;
+  border-left-color: var(--ac-border) !important;
 }
 .ac-card__body hr {
-  border-color: #E4E7EC !important;
+  border-color: var(--ac-border) !important;
 }
 
-/* 正文内的小节标题与强调：深色 */
+/* 正文内的小节标题与强调 */
 .ac-card__body h1,
 .ac-card__body h2,
 .ac-card__body h3,
@@ -128,24 +193,24 @@
 .ac-card__body .markdown-preview-view h2,
 .ac-card__body .markdown-preview-view h3,
 .ac-card__body .markdown-preview-view h4 {
-  color: #1A1D23 !important;
+  color: var(--ac-title) !important;
 }
 .ac-card__body strong {
-  color: #1A1D23 !important;
+  color: var(--ac-title) !important;
 }
 .ac-card__body a,
 .ac-card__body .internal-link {
-  color: #2563EB !important;
+  color: var(--ac-link) !important;
 }
 
-/* 代码块 / 行内码：白底更清晰 */
+/* 代码块 / 行内码 */
 .ac-card__body pre {
-  background: #FFFFFF !important;
-  border: 1px solid #E4E7EC !important;
+  background: var(--ac-code-bg) !important;
+  border: 1px solid var(--ac-border) !important;
 }
 .ac-card__body code {
-  background: #EDEFF2 !important;
-  color: #2E3138 !important;
+  background: var(--ac-chip) !important;
+  color: var(--ac-code-fg) !important;
 }
 .ac-card__body pre code {
   background: transparent !important;
@@ -153,29 +218,29 @@
 
 /* 表格 */
 .ac-card__body table {
-  color: #3A3F47 !important;
+  color: var(--ac-text) !important;
 }
 .ac-card__body th {
-  color: #1A1D23 !important;
-  border-color: #E4E7EC !important;
+  color: var(--ac-title) !important;
+  border-color: var(--ac-border) !important;
 }
 
 /* ══════════════════════════════════════════════════════════
-   四、嵌套条目卡片：白底，浮在灰色内容区上
+   四、嵌套条目卡片：浮在内容区上
    ══════════════════════════════════════════════════════════ */
 .ac-card__body .ac-card {
-  background: #FFFFFF !important;
-  border-color: #E4E7EC !important;
-  box-shadow: 0 2px 6px rgba(20, 23, 28, 0.08);
+  background: var(--ac-card) !important;
+  border-color: var(--ac-border) !important;
+  box-shadow: var(--ac-shadow-nest);
 }
 .ac-card__body .ac-card__head,
 .ac-card__body .ac-card__thumb,
 .ac-card__body .ac-card__title {
-  color: #1A1D23 !important;
+  color: var(--ac-title) !important;
 }
-/* 嵌套卡片自己的内容区同样灰色（层级循环，视觉一致） */
+/* 嵌套卡片自己的内容区同样处理（层级循环，视觉一致） */
 .ac-card__body .ac-card__body {
-  background: #F5F6F8 !important;
+  background: var(--ac-body) !important;
   margin: 6px -12px -8px !important;
   padding: 10px 12px !important;
 }
@@ -207,8 +272,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════
-   六、页面舞台底色调灰：让白色卡片"浮"起来
-   层次：页面 #EBEDF0（最深） → 卡片 #FFFFFF（白） → 内容区 #F5F6F8（浅灰）
+   六、页面舞台底色：让卡片"浮"起来
    ⚠️ .markdown-preview-view 这个类名【嵌入内容内部也在用】，
       必须用 :not() 排除，否则每张卡片的内容区都会被染成页面色。
    ══════════════════════════════════════════════════════════ */
@@ -217,13 +281,13 @@
 .markdown-source-view:not(.markdown-embed .markdown-source-view),
 .mod-cm6 .cm-editor:not(.markdown-embed .cm-editor),
 .mod-cm6 .cm-scroller:not(.markdown-embed .cm-scroller) {
-  background: #EBEDF0 !important;
-  background-color: #EBEDF0 !important;
+  background: var(--ac-stage) !important;
+  background-color: var(--ac-stage) !important;
 }
 
-/* 工作区留白统一，避免四周露出亮白边 */
+/* 工作区留白统一，避免四周露出不同色的边 */
 .workspace-split.mod-root,
 .workspace-tabs .workspace-leaf,
 .workspace-leaf-content {
-  background: #EBEDF0 !important;
+  background: var(--ac-stage) !important;
 }
