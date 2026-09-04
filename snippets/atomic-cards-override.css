@@ -1,0 +1,229 @@
+/* ==========================================================================
+ * Atomic Cards 覆盖样式 · 方案 C：白卡片 + 灰色内容区
+ *
+ * 结构：题头区 = 白色（卡片本色） | 内容展开区 = 灰色底 #F5F6F8
+ * 文字：深色可读，对齐 web-books 浅色方案（#1A1D23 / #3A3F47）
+ * 嵌套：条目卡片白底，浮在灰色内容区上
+ *
+ * 关掉本 snippet 即回到插件自带样式。
+ * ======================================================================== */
+
+/* ══════════════════════════════════════════════════════════
+   一、卡片容器：白底 + 细边框 + 轻阴影
+   ══════════════════════════════════════════════════════════ */
+.ac-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E4E7EC !important;
+  box-shadow: 0 1px 3px rgba(20, 23, 28, 0.05);
+}
+.ac-card:hover {
+  border-color: #D8DCE3 !important;
+  box-shadow: 0 4px 14px rgba(20, 23, 28, 0.10);
+}
+
+/* ══════════════════════════════════════════════════════════
+   二、题头区：白色（卡片本色），深色标题
+   ══════════════════════════════════════════════════════════ */
+.ac-card__head,
+.ac-card__thumb,
+.ac-card__title {
+  color: #1A1D23 !important;
+}
+.ac-card__title {
+  text-decoration: none !important;
+  font-weight: 600 !important;
+}
+
+/* 题头附属信息（缺失标记 / 标签 / 日期 / 徽章 / 按钮） */
+.ac-card__missing,
+.ac-tag,
+.ac-card__meta,
+.ac-badge,
+.ac-btn {
+  color: #5A6069 !important;
+}
+.ac-btn:hover {
+  color: #1A1D23 !important;
+  background: #EDEFF2 !important;
+}
+.ac-tag,
+.ac-badge {
+  background: #EDEFF2 !important;
+}
+.ac-badge--type {
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #2563EB !important;
+}
+.ac-badge--status {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #15803D !important;
+}
+
+/* 摘要（收起时显示，白底上） */
+.ac-card__summary {
+  color: #6B7280 !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   三、内容区：灰色底 #F5F6F8
+   负 margin 让灰底贴到卡片左右下边缘（卡片 padding 是 8px 12px）
+   正文是 Obsidian 嵌入渲染的，color 必须逐层下沉才到得了文字
+   ══════════════════════════════════════════════════════════ */
+.ac-card__body {
+  background: #F5F6F8 !important;
+  border-top: 1px solid #E4E7EC !important;
+  margin: 6px -12px -8px !important;
+  padding: 10px 12px !important;
+}
+.ac-card__body,
+.ac-card__body .markdown-embed,
+.ac-card__body .internal-embed,
+.ac-card__body .markdown-embed-content,
+.ac-card__body .markdown-preview-view,
+.ac-card__body .markdown-rendered,
+.ac-card__body div,
+.ac-card__body p,
+.ac-card__body li,
+.ac-card__body ul,
+.ac-card__body ol,
+.ac-card__body .markdown-preview-view div,
+.ac-card__body .markdown-preview-view p,
+.ac-card__body .markdown-preview-view li,
+.ac-card__body .markdown-preview-view ul,
+.ac-card__body .markdown-preview-view ol {
+  color: #3A3F47 !important;
+}
+
+/* 嵌入容器只清边距和底色，透出灰色内容区 */
+.ac-card__body .markdown-embed,
+.ac-card__body .internal-embed,
+.ac-card__body .markdown-embed-content,
+.ac-card__body .markdown-preview-view,
+.ac-card__body .markdown-embed .markdown-preview-view,
+.ac-card__body .markdown-embed .markdown-rendered {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 引用块：比正文浅一档 */
+.ac-card__body blockquote,
+.ac-card__body blockquote p,
+.ac-card__body .markdown-preview-view blockquote,
+.ac-card__body .markdown-preview-view blockquote p {
+  color: #6B7280 !important;
+}
+.ac-card__body blockquote {
+  border-left-color: #D8DCE3 !important;
+}
+.ac-card__body hr {
+  border-color: #E4E7EC !important;
+}
+
+/* 正文内的小节标题与强调：深色 */
+.ac-card__body h1,
+.ac-card__body h2,
+.ac-card__body h3,
+.ac-card__body h4,
+.ac-card__body .markdown-preview-view h1,
+.ac-card__body .markdown-preview-view h2,
+.ac-card__body .markdown-preview-view h3,
+.ac-card__body .markdown-preview-view h4 {
+  color: #1A1D23 !important;
+}
+.ac-card__body strong {
+  color: #1A1D23 !important;
+}
+.ac-card__body a,
+.ac-card__body .internal-link {
+  color: #2563EB !important;
+}
+
+/* 代码块 / 行内码：白底更清晰 */
+.ac-card__body pre {
+  background: #FFFFFF !important;
+  border: 1px solid #E4E7EC !important;
+}
+.ac-card__body code {
+  background: #EDEFF2 !important;
+  color: #2E3138 !important;
+}
+.ac-card__body pre code {
+  background: transparent !important;
+}
+
+/* 表格 */
+.ac-card__body table {
+  color: #3A3F47 !important;
+}
+.ac-card__body th {
+  color: #1A1D23 !important;
+  border-color: #E4E7EC !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   四、嵌套条目卡片：白底，浮在灰色内容区上
+   ══════════════════════════════════════════════════════════ */
+.ac-card__body .ac-card {
+  background: #FFFFFF !important;
+  border-color: #E4E7EC !important;
+  box-shadow: 0 2px 6px rgba(20, 23, 28, 0.08);
+}
+.ac-card__body .ac-card__head,
+.ac-card__body .ac-card__thumb,
+.ac-card__body .ac-card__title {
+  color: #1A1D23 !important;
+}
+/* 嵌套卡片自己的内容区同样灰色（层级循环，视觉一致） */
+.ac-card__body .ac-card__body {
+  background: #F5F6F8 !important;
+  margin: 6px -12px -8px !important;
+  padding: 10px 12px !important;
+}
+/* 嵌套小卡片（size: small）padding 更小，负 margin 跟着收窄 */
+.ac-size-small .ac-card__body,
+.ac-card__body .ac-size-small .ac-card__body {
+  margin: 4px -10px -6px !important;
+  padding: 8px 10px !important;
+}
+
+/* 嵌套卡片墙的标题（.ac-root__title）一律隐藏：
+   章文件的 cards 块 title 就是章名，展开后和大卡片标题重复。
+   最外层卡片墙的 title（如 _卡片预览 的「3D制作」）不受影响。
+   以后想恢复嵌套标题，删掉这条即可。 */
+.ac-card__body .ac-root__title {
+  display: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   五、卡片墙：强制单列纵向堆叠，禁用分列
+   插件原本用 grid + JS 算 grid-template-columns（受 columns 选项控制），
+   这里改成 flex column，无论 columns 写几都一行一张、撑满宽度。
+   （gap 不强制，保留各自的间距：默认 10px / small 8px）
+   ══════════════════════════════════════════════════════════ */
+.ac-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   六、页面舞台底色调灰：让白色卡片"浮"起来
+   层次：页面 #EBEDF0（最深） → 卡片 #FFFFFF（白） → 内容区 #F5F6F8（浅灰）
+   ⚠️ .markdown-preview-view 这个类名【嵌入内容内部也在用】，
+      必须用 :not() 排除，否则每张卡片的内容区都会被染成页面色。
+   ══════════════════════════════════════════════════════════ */
+.markdown-preview-view:not(.markdown-embed .markdown-preview-view),
+.markdown-reading-view:not(.markdown-embed .markdown-reading-view),
+.markdown-source-view:not(.markdown-embed .markdown-source-view),
+.mod-cm6 .cm-editor:not(.markdown-embed .cm-editor),
+.mod-cm6 .cm-scroller:not(.markdown-embed .cm-scroller) {
+  background: #EBEDF0 !important;
+  background-color: #EBEDF0 !important;
+}
+
+/* 工作区留白统一，避免四周露出亮白边 */
+.workspace-split.mod-root,
+.workspace-tabs .workspace-leaf,
+.workspace-leaf-content {
+  background: #EBEDF0 !important;
+}
