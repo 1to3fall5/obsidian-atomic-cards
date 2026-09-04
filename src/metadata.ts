@@ -249,10 +249,13 @@ export function renderMarkdown(
     render?: (a: App, m: string, e: HTMLElement, p: string, c: Component) => void;
     renderMarkdown?: (m: string, e: HTMLElement, p: string, c: Component) => void;
   };
-  if (typeof md.renderMarkdown === "function") {
-    md.renderMarkdown(markdown, el, sourcePath, component);
-  } else if (typeof md.render === "function") {
+  // 必须优先用 render()：renderMarkdown() 是简化版，不会把独占一行的 ![[ ]]
+  // 处理成块级嵌入，只留下一个 <span class="internal-embed"> 占位符，
+  // 导致卡片正文里的嵌套嵌入永远无法被接管成卡片。
+  if (typeof md.render === "function") {
     md.render(app, markdown, el, sourcePath, component);
+  } else if (typeof md.renderMarkdown === "function") {
+    md.renderMarkdown(markdown, el, sourcePath, component);
   } else {
     el.setText(markdown);
   }

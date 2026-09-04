@@ -22,13 +22,32 @@ export default class AtomicCardsPlugin extends Plugin {
   settings: AtomicCardsSettings = { ...DEFAULT_SETTINGS };
 
   async onload(): Promise<void> {
-    await this.loadSettings();
-    this.addSettingTab(new AtomicCardsSettingTab(this.app, this));
+    try {
+      await this.loadSettings();
+      this.addSettingTab(new AtomicCardsSettingTab(this.app, this));
 
-    // 接管 Obsidian 原生 ![[ ]] 嵌入：语法保持原生，只把渲染替换成卡片
-    this.registerMarkdownPostProcessor((el, ctx) => this.upgradeEmbeds(el, ctx));
+      // 接管 Obsidian 原生 ![[ ]] 嵌入：语法保持原生，只把渲染替换成卡片。
+      // sortOrder 取大值 → 排在所有内置处理器（含嵌入渲染）之后运行，
+      // 否则 post processor 会跑在嵌入生成之前，什么也匹配不到。
+      this.registerMarkdownPostProcessor(
+        (el, ctx) => {
+          this.upgradeEmbeds(el, ctx);
+          // 嵌入由 Obsidian 异步填充，补两次扫描兜底。
+          // 已接管的元素带 data-ac-upgraded，重复扫描不会重复渲染。
+          window.setTimeout(() => this.upgradeEmbeds(el, ctx), 60);
+          window.setTimeout(() => this.upgradeEmbeds(el, ctx), 400);
+        },
+        1000
+      );
 
-    this.registerCommands();
+      this.registerCommands();
+      if (this.settings.verbose) {
+        console.log("[atomic-cards] 已加载，upgradeEmbeds =", this.settings.upgradeEmbeds);
+      }
+    } catch (err) {
+      console.error("[atomic-cards] onload 失败：", err);
+      new Notice(`Atomic Cards 加载失败：${String(err)}`);
+    }
   }
 
   onunload(): void {
@@ -64,25 +83,48 @@ export default class AtomicCardsPlugin extends Plugin {
    * ===================================================================== */
 
   private upgradeEmbeds(el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
+    try {
+      this.doUpgradeEmbeds(el, ctx);
+    } catch (err) {
+      console.error("[atomic-cards] upgradeEmbeds 出错：", err);
+    }
+  }
+
+  private doUpgradeEmbeds(el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
     if (!this.settings.upgradeEmbeds) return;
     // 达到嵌套上限时不再接管，避免循环引用无限套娃
     if (getNest() >= this.settings.maxNestDepth) return;
 
-    for (const embed of Array.from(el.querySelectorAll<HTMLElement>(".internal-embed"))) {
-      // 只接管块级嵌入（独占一行）；行内嵌入 ![[x]] 保持原样
-      if (embed.tagName !== "DIV") continue;
-      // 同一个元素只处理一次
-      if (embed.dataset.acUpgraded) continue;
+    // :not(.media-embed) 直接在选择器层排掉图片/音视频嵌入，
+    // 不用把它们捞进循环再过滤（条目正文里常有几十张图）。
+    const nodes = Array.from(
+      el.querySelectorAll<HTMLElement>(
+        ".internal-embed:not(.media-embed), .markdown-embed:not(.media-embed)"
+      )
+    ).filter((n) => !n.dataset.acUpgraded);
 
-      const src = (embed.getAttribute("src") ?? "").trim();
+    let taken = 0;
+    for (const embed of nodes) {
+      // ⚠️ 只判断"嵌入本身"是不是媒体元素，不能查所有后代：
+      // 笔记正文里普遍有图片，用 querySelector 会把整篇嵌入误判成图片嵌入。
+      const first = embed.firstElementChild;
+      if (first && /^(IMG|AUDIO|VIDEO|CANVAS|IFRAME)$/.test(first.tagName)) continue;
+
+      // src 优先，没有则用 alt 兜底
+      const src = (embed.getAttribute("src") ?? embed.getAttribute("alt") ?? "").trim();
       if (!src) continue;
-      // 图片 / 音视频 / PDF / 画布等不是笔记，跳过
+      // 图片 / 音视频 / PDF / 画布等按扩展名排除
       if (SKIP_EMBED_EXT.test(src.split("#")[0])) continue;
-      // 已经渲染成媒体元素的，跳过
-      if (embed.querySelector("img, audio, video, canvas")) continue;
 
       embed.dataset.acUpgraded = "1";
-      void this.replaceWithCard(embed, src, ctx);
+      taken++;
+      void this.replaceWithCard(embed, src, ctx).catch((err) =>
+        console.error("[atomic-cards] 渲染卡片失败：", src, err)
+      );
+    }
+    // 常规运行不打印，排查时在设置里打开「详细日志」
+    if (taken && this.settings.verbose) {
+      console.log("[atomic-cards] 已接管", taken, "处嵌入");
     }
   }
 
@@ -120,16 +162,26 @@ export default class AtomicCardsPlugin extends Plugin {
       settings: this.settings,
       sourcePath: ctx.sourcePath,
       component,
-      depth,
+      // +1：卡片正文里再渲染的内容属于下一层，递增后嵌套深度上限才有效
+      depth: depth + 1,
     };
+
+    // ⚠️ 先同步占住位置，再异步生成真正的卡片。
+    // 之前是 await 之后再 replaceWith，但 readNoteMeta 是异步的，
+    // 等它返回时 Obsidian 可能已经重建过节点 → embed.isConnected 为 false → 卡片丢失。
+    // 先放占位元素就不存在这个竞态：占位元素随父节点一起留在文档里。
+    const placeholder = document.createElement("div");
+    placeholder.className = "ac-card ac-card--pending";
+    placeholder.dataset.acPath = src;
+    placeholder.setText(src.split("/").pop()?.replace(/\.md$/i, "") ?? src);
+    embed.replaceWith(placeholder);
 
     // src 形如 "笔记"、"笔记.md"、"笔记#标题"、"笔记#^块id"
     const target = src.replace(/\.md(?=#|$)/i, "");
     const meta = await readNoteMeta(this.app, target, ctx.sourcePath, this.settings);
-    if (!embed.isConnected) return;
 
     const card = withNest(depth, () => renderCard(env, meta, opts));
-    embed.replaceWith(card);
+    placeholder.replaceWith(card);
   }
 
   /* =======================================================================

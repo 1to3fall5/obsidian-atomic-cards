@@ -42,6 +42,13 @@
   background: var(--background-secondary);
 }
 
+/* 卡片生成前的占位元素：先同步占住位置，异步生成真卡片后替换掉 */
+.ac-card--pending {
+  opacity: 0.55;
+  font-size: 0.85em;
+  color: var(--text-faint);
+}
+
 .ac-card.is-expanded {
   max-height: none;
   overflow: visible;
