@@ -99,3 +99,20 @@ npm run dev         # watch 模式
 > ![[笔记A]]
 > ![[笔记B]]
 ```
+
+## 可选样式片段（CSS snippet）
+
+`snippets/atomic-cards-override.css` 是一套**可选的增强样式**，视觉为「白卡片 + 灰色内容区 + 深色可读文字」：
+
+- 题头区白底、深色标题；展开后的内容区浅灰底（`#F5F6F8`）
+- 卡片墙**强制单列**纵向堆叠，一行一张（`columns` 选项不再生效）
+- 隐藏嵌套卡片墙的标题 —— 章文件 cards 块里的 `title:` 通常就是章名，展开后与大卡片标题重复
+- 页面舞台底色调灰（`#EBEDF0`），让白色卡片浮起来
+
+**用法**：把 `snippets/atomic-cards-override.css` 复制到 `<vault>/.obsidian/snippets/`，
+到 设置 → 外观 → CSS 代码片段 打开 **atomic-cards-override**。
+
+snippet 是热加载的：改完即生效，关掉开关即回到插件自带样式 —— 两套可随时切换。
+
+> ⚠️ snippet 末尾「六、页面舞台底色调灰」这一节是**全局样式**，会影响整个 vault 的外观
+> （这是有意为之，用于衬托白色卡片）。不想要的话删掉那一节即可，其余部分不受影响。
