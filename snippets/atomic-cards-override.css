@@ -85,6 +85,30 @@
   box-shadow: var(--ac-shadow-hover);
 }
 
+/* ── 卡片间距 ──
+   卡片是独立块，间距靠 margin（相邻卡片的 margin 会自动折叠）。
+   嵌套在内容区里的条目卡片排得更紧；首尾不再和内容区的 padding 叠加留白。 */
+.ac-card__body .ac-card {
+  margin: 5px 0 !important;
+}
+.ac-card__body > .ac-card:first-child {
+  margin-top: 0 !important;
+}
+.ac-card__body > .ac-card:last-child {
+  margin-bottom: 0 !important;
+}
+/* 知识点小卡片（size: small）再紧一档 */
+.ac-size-small {
+  margin: 4px 0 !important;
+}
+
+/* ⚠️ 间距大头在这：章文件里连续几行 ![[ ]] 会被 Obsidian 合并进同一个段落，
+   行与行之间是 <br>。卡片替换掉 span 后，<br> 夹在卡片之间，每条占一行行高。
+   只隐藏"前面有卡片兄弟"的 br，不影响正常文本里的换行。 */
+.ac-card ~ br {
+  display: none;
+}
+
 /* ══════════════════════════════════════════════════════════
    二、题头区
    ══════════════════════════════════════════════════════════ */
@@ -138,6 +162,9 @@
   border-top: 1px solid var(--ac-border) !important;
   margin: 6px -12px -8px !important;
   padding: 10px 12px !important;
+  /* 展开后卡片是 overflow: visible，内容区的方形背景不再被裁剪，
+     会把卡片底部的圆角盖成直角 —— 这里自己补上底部圆角（比卡片小 1px 描边）。 */
+  border-radius: 0 0 7px 7px !important;
 }
 .ac-card__body,
 .ac-card__body .markdown-embed,
