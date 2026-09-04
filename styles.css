@@ -18,11 +18,7 @@
   margin-bottom: 8px;
 }
 
-.ac-grid {
-  display: grid;
-  gap: 10px;
-  align-items: start;
-}
+/* 已移除 .ac-grid：不再有"卡片墙"容器，每个嵌入单独渲染成一张卡片 */
 
 /* --------------------------- 卡片：公共骨架 ---------------------------- */
 .ac-card {
@@ -30,6 +26,8 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+  /* 卡片直接替换嵌入元素插入文档流，间距自己给（不再有网格容器） */
+  margin: 10px 0;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
@@ -45,9 +43,17 @@
 }
 
 .ac-card.is-expanded {
-  grid-column: 1 / -1;
   max-height: none;
   overflow: visible;
+}
+
+/* 嵌入写在列表里（- ![[笔记]]）时：去掉列表符号和缩进，让卡片顶格 */
+li:has(> .ac-card) {
+  list-style: none;
+}
+ul:has(> li > .ac-card),
+ol:has(> li > .ac-card) {
+  padding-left: 0;
 }
 
 .ac-card.is-missing {

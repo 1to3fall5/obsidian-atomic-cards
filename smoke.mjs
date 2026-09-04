@@ -20,7 +20,6 @@ const load = async (entry, out, alias) => {
   return mod.default ?? mod;
 };
 
-const parser = await load("src/parser.ts", ".smoke-parser.cjs");
 const metadata = await load("src/metadata.ts", ".smoke-metadata.cjs", {
   obsidian: stub,
 });
@@ -35,52 +34,6 @@ const check = (name, cond, extra = "") => {
 };
 const eq = (name, actual, expected) =>
   check(name, JSON.stringify(actual) === JSON.stringify(expected), `\n  got ${JSON.stringify(actual)}\n  exp ${JSON.stringify(expected)}`);
-
-/* ---------- parser ---------- */
-const q1 = parser.parseCardsBlock(
-  ["title: 本章引用的原子文档", "---", "- [[A]]", "- ![[B]]", "- [[C|别名]]", "- 纯文本标题"].join("\n")
-);
-eq("options 解析", q1.options, { title: "本章引用的原子文档" });
-
-// 分列已移除：columns / width 不再被解析，卡片墙固定单列
-eq("columns 不再解析", parser.parseCardsBlock("columns: 3").options, {});
-eq("width 不再解析", parser.parseCardsBlock("width: 240").options, {});
-eq("entries 解析", q1.entries, [
-  { target: "A" },
-  { target: "B" },
-  { target: "C", alias: "别名" },
-  { target: "纯文本标题" },
-]);
-
-const q2 = parser.parseCardsBlock(
-  ["from: wiki/concepts", "tag: #type/concept", "sort: updated", "limit: 5", "reverse: true", "density: compact", "height: 220", "summary: 80", "expanded: true", "cover: false"].join("\n")
-);
-eq("query 选项", q2.options, {
-  from: "wiki/concepts",
-  tag: "type/concept",
-  sort: "updated",
-  limit: 5,
-  reverse: true,
-  density: "compact",
-  height: 220,
-  summary: 80,
-  expanded: true,
-  cover: false,
-});
-
-eq("layout 选项（style 为别名，后者覆盖）", parser.parseCardsBlock("layout: card\nstyle: wrap").options, {
-  layout: "wrap",
-});
-
-eq("空块", parser.parseCardsBlock(""), { options: {}, entries: [] });
-eq("忽略 markdown 标题行、只收普通行", parser.parseCardsBlock("# 标题\n普通一行"), {
-  options: {},
-  entries: [{ target: "普通一行" }],
-});
-eq("块引用与标签行不收为条目", parser.parseCardsBlock("> 引用\n#tag\n- [[A]]"), {
-  options: {},
-  entries: [{ target: "A" }],
-});
 
 /* ---------- 摘要提取 ---------- */
 const md = [
@@ -156,7 +109,7 @@ check("块 id 引用", !!b3 && b3.content === "- a\n- b", JSON.stringify(b3));
 check("找不到的段落返回 null", metadata.extractBlock(rawDoc, fakeCache, "不存在") === null);
 check("URL 编码的标题可匹配", !!metadata.extractBlock(rawDoc, fakeCache, "为什么适合%20Chen"));
 
-for (const tmp of [stub, ".smoke-parser.cjs", ".smoke-metadata.cjs"]) {
+for (const tmp of [stub, ".smoke-metadata.cjs"]) {
   fs.rmSync(path.resolve(tmp), { force: true });
 }
 

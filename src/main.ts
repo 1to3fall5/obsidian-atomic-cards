@@ -5,20 +5,17 @@ import {
   MarkdownView,
   Notice,
   Plugin,
-  TFile,
 } from "obsidian";
 import { renderCard, getNest, withNest } from "./card";
-import { readNoteMeta, resolveFile } from "./metadata";
-import { parseCardsBlock } from "./parser";
+import { readNoteMeta } from "./metadata";
 import { AtomicCardsSettingTab } from "./settings";
 import {
   AtomicCardsSettings,
-  CardEntry,
-  CardOptions,
   DEFAULT_SETTINGS,
-  MergedOptions,
+  RenderOptions,
   SETTINGS_VERSION,
   Size,
+  SKIP_EMBED_EXT,
 } from "./types";
 
 export default class AtomicCardsPlugin extends Plugin {
@@ -28,12 +25,8 @@ export default class AtomicCardsPlugin extends Plugin {
     await this.loadSettings();
     this.addSettingTab(new AtomicCardsSettingTab(this.app, this));
 
-    const handler = (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) =>
-      this.renderCardsBlock(source, el, ctx);
-
-    this.registerMarkdownCodeBlockProcessor("cards", handler);
-    this.registerMarkdownCodeBlockProcessor("atomic-cards", handler);
-    this.registerMarkdownCodeBlockProcessor("ac", handler);
+    // 接管 Obsidian 原生 ![[ ]] 嵌入：语法保持原生，只把渲染替换成卡片
+    this.registerMarkdownPostProcessor((el, ctx) => this.upgradeEmbeds(el, ctx));
 
     this.registerCommands();
   }
@@ -67,66 +60,58 @@ export default class AtomicCardsPlugin extends Plugin {
   }
 
   /* =======================================================================
-   * 渲染
+   * 渲染：接管原生嵌入
    * ===================================================================== */
 
-  private mergeOptions(o: CardOptions, nested = false): MergedOptions {
-    const s = this.settings;
-    const size: Size = o.size ?? (nested ? s.nestedSize : "normal");
-    const isSmall = size === "small";
-    return {
-      height: o.height ?? s.cardHeight,
-      summary: o.summary ?? (isSmall ? 90 : s.summaryLength),
-      expanded: o.expanded ?? (nested ? s.nestedExpanded : s.defaultExpanded),
-      cover: o.cover ?? s.showCover,
-      meta: o.meta ?? (isSmall ? false : s.showMeta),
-      tags: o.tags ?? (isSmall ? false : s.showTags),
-      // 标题不再跳转，"打开"按钮成了唯一跳转入口，小卡片也默认给
-      open: o.open ?? (isSmall ? true : s.showOpenButton),
-      density: o.density ?? (isSmall ? "compact" : s.density),
-      layout: o.layout ?? s.layout,
-      size,
-      reverse: o.reverse ?? false,
-      from: o.from ?? "",
-      tag: o.tag ?? "",
-      title: o.title ?? "",
-      sort: o.sort ?? "name",
-      limit: o.limit ?? 0,
-    };
-  }
+  private upgradeEmbeds(el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
+    if (!this.settings.upgradeEmbeds) return;
+    // 达到嵌套上限时不再接管，避免循环引用无限套娃
+    if (getNest() >= this.settings.maxNestDepth) return;
 
-  private renderCardsBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
-    const depth = getNest();
-    const { options, entries } = parseCardsBlock(source);
-    // 嵌在别的卡片里时（depth > 0）默认切成知识点小卡片
-    const opts = this.mergeOptions(options, depth > 0);
+    for (const embed of Array.from(el.querySelectorAll<HTMLElement>(".internal-embed"))) {
+      // 只接管块级嵌入（独占一行）；行内嵌入 ![[x]] 保持原样
+      if (embed.tagName !== "DIV") continue;
+      // 同一个元素只处理一次
+      if (embed.dataset.acUpgraded) continue;
 
-    const root = el.createDiv({ cls: "ac-root" });
-    if (opts.title) root.createDiv({ cls: "ac-root__title", text: opts.title });
+      const src = (embed.getAttribute("src") ?? "").trim();
+      if (!src) continue;
+      // 图片 / 音视频 / PDF / 画布等不是笔记，跳过
+      if (SKIP_EMBED_EXT.test(src.split("#")[0])) continue;
+      // 已经渲染成媒体元素的，跳过
+      if (embed.querySelector("img, audio, video, canvas")) continue;
 
-    // 卡片墙固定单列：一行一张、占满宽度（不做分列 / 自适应网格）
-    const grid = root.createDiv({ cls: `ac-grid ac-grid--${opts.size}` });
-    grid.style.gridTemplateColumns = "1fr";
-
-    if (depth >= this.settings.maxNestDepth) {
-      grid.createDiv({
-        cls: "ac-warn",
-        text: `已达到最大嵌套深度（${this.settings.maxNestDepth}），停止递归渲染以避免循环引用。`,
-      });
-      return;
+      embed.dataset.acUpgraded = "1";
+      void this.replaceWithCard(embed, src, ctx);
     }
-
-    void this.fillGrid(grid, entries, opts, ctx, depth);
   }
 
-  private async fillGrid(
-    grid: HTMLElement,
-    entries: CardEntry[],
-    opts: MergedOptions,
-    ctx: MarkdownPostProcessorContext,
-    depth: number
+  private async replaceWithCard(
+    embed: HTMLElement,
+    src: string,
+    ctx: MarkdownPostProcessorContext
   ): Promise<void> {
-    const component = new MarkdownRenderChild(grid);
+    const depth = getNest();
+    const size: Size = depth > 0 ? this.settings.nestedSize : "normal";
+    const isSmall = size === "small";
+
+    const opts: RenderOptions = {
+      size,
+      density: isSmall ? "compact" : this.settings.density,
+      layout: this.settings.layout,
+      cover: this.settings.showCover,
+      meta: isSmall ? false : this.settings.showMeta,
+      tags: isSmall ? false : this.settings.showTags,
+      // 标题是折叠开关，"打开"按钮是唯一的跳转入口
+      open: isSmall ? true : this.settings.showOpenButton,
+      expanded: depth > 0 ? this.settings.nestedExpanded : this.settings.defaultExpanded,
+      height: this.settings.cardHeight,
+      summary: isSmall ? 90 : this.settings.summaryLength,
+    };
+
+    // 挂在游离节点上：只借用生命周期，onunload 时清空它不影响文档
+    const holder = document.createElement("div");
+    const component = new MarkdownRenderChild(holder);
     component.load();
     ctx.addChild(component);
 
@@ -135,88 +120,16 @@ export default class AtomicCardsPlugin extends Plugin {
       settings: this.settings,
       sourcePath: ctx.sourcePath,
       component,
-      depth: depth + 1,
+      depth,
     };
 
-    const list = this.resolveEntries(entries, opts, ctx.sourcePath);
-    if (!list.length) {
-      grid.createDiv({ cls: "ac-empty", text: "没有匹配的原子文档" });
-      return;
-    }
+    // src 形如 "笔记"、"笔记.md"、"笔记#标题"、"笔记#^块id"
+    const target = src.replace(/\.md(?=#|$)/i, "");
+    const meta = await readNoteMeta(this.app, target, ctx.sourcePath, this.settings);
+    if (!embed.isConnected) return;
 
-    // 顺序渲染，保证卡片顺序稳定
-    for (const entry of list) {
-      const meta = await readNoteMeta(this.app, entry.target, ctx.sourcePath, this.settings, entry.alias);
-      if (!grid.isConnected) return;
-      const card = withNest(env.depth, () => renderCard(env, meta, opts));
-      grid.appendChild(card);
-    }
-  }
-
-  /* =======================================================================
-   * 数据来源
-   * ===================================================================== */
-
-  private hasTag(file: TFile, tag: string): boolean {
-    const c = this.app.metadataCache.getFileCache(file);
-    const found: string[] = [];
-    const push = (v: unknown) => {
-      if (typeof v === "string") found.push(v.replace(/^#/, ""));
-      else if (Array.isArray(v)) v.forEach(push);
-    };
-    push(c?.frontmatter?.tags);
-    push(c?.frontmatter?.tag);
-    (c?.tags ?? []).forEach((t) => found.push(t.tag.replace(/^#/, "")));
-    return found.some((t) => t === tag || t.startsWith(`${tag}/`));
-  }
-
-  private sortEntries(entries: CardEntry[], opts: MergedOptions, sourcePath: string): CardEntry[] {
-    const out = [...entries];
-    if (opts.sort === "name") {
-      out.sort((a, b) => a.target.localeCompare(b.target, "zh-Hans-CN"));
-    } else if (opts.sort === "updated" || opts.sort === "created") {
-      const key = opts.sort === "updated" ? "mtime" : "ctime";
-      const timeOf = (t: string) => {
-        const f = resolveFile(this.app, t, sourcePath);
-        return f ? (f.stat as unknown as Record<string, number>)[key] ?? 0 : 0;
-      };
-      out.sort((a, b) => timeOf(b.target) - timeOf(a.target));
-    }
-    return opts.limit > 0 ? out.slice(0, opts.limit) : out;
-  }
-
-  private resolveEntries(entries: CardEntry[], opts: MergedOptions, sourcePath: string): CardEntry[] {
-    if (entries.length) return entries;
-
-    // 反查：列出所有引用了当前文档的笔记（上层章节）
-    if (opts.reverse) {
-      const links = this.app.metadataCache.resolvedLinks;
-      const out: CardEntry[] = [];
-      for (const src of Object.keys(links)) {
-        if (links[src]?.[sourcePath]) out.push({ target: src.replace(/\.md$/i, "") });
-      }
-      return this.sortEntries(out, opts, sourcePath);
-    }
-
-    if (opts.from || opts.tag) {
-      let files = this.app.vault.getMarkdownFiles();
-      if (sourcePath) files = files.filter((f) => f.path !== sourcePath);
-      if (opts.from) {
-        const folder = opts.from.replace(/^\/|\/$/g, "");
-        files = files.filter((f) => f.path === `${folder}.md` || f.path.startsWith(`${folder}/`));
-      }
-      if (opts.tag) {
-        const want = opts.tag.replace(/^#/, "");
-        files = files.filter((f) => this.hasTag(f, want));
-      }
-      return this.sortEntries(
-        files.map((f) => ({ target: f.path.replace(/\.md$/i, "") })),
-        opts,
-        sourcePath
-      );
-    }
-
-    return entries;
+    const card = withNest(depth, () => renderCard(env, meta, opts));
+    embed.replaceWith(card);
   }
 
   /* =======================================================================
@@ -230,35 +143,15 @@ export default class AtomicCardsPlugin extends Plugin {
 
   private registerCommands(): void {
     this.addCommand({
-      id: "insert-cards-block",
-      name: "插入卡片块模板",
-      editorCallback: (editor: Editor) => {
-        const cursor = editor.getCursor();
-        const block = "```cards\n\n- [[]]\n```\n";
-        editor.replaceRange(block, cursor);
-        editor.setCursor({ line: cursor.line + 2, ch: 6 });
-      },
+      id: "links-to-embeds",
+      name: "把选区里的 [[链接]] 转成嵌入列表",
+      editorCallback: (editor: Editor) => this.linksToEmbeds(editor),
     });
 
     this.addCommand({
-      id: "embeds-to-cards",
-      name: "把嵌入 ![[...]] 转成卡片墙",
-      editorCallback: (editor: Editor) => this.embedsToCards(editor),
-    });
-
-    this.addCommand({
-      id: "links-to-cards",
-      name: "把选区里的 [[链接]] 转成卡片墙",
-      editorCallback: (editor: Editor) => this.linksToCards(editor),
-    });
-
-    this.addCommand({
-      id: "insert-reverse-cards",
-      name: "插入反查卡片块（列出引用本文的章节）",
-      editorCallback: (editor: Editor) => {
-        const cursor = editor.getCursor();
-        editor.replaceRange("```cards\nreverse: true\ntitle: 被引用在\n```\n", cursor);
-      },
+      id: "insert-reverse-embeds",
+      name: "插入反查列表（引用本文的笔记，生成为嵌入）",
+      editorCallback: (editor: Editor) => this.insertReverseEmbeds(editor),
     });
 
     this.addCommand({
@@ -278,57 +171,8 @@ export default class AtomicCardsPlugin extends Plugin {
     });
   }
 
-  private selectionLineRange(editor: Editor): [number, number] {
-    if (!editor.somethingSelected()) return [0, editor.lineCount() - 1];
-    const from = editor.getCursor("from");
-    const to = editor.getCursor("to");
-    const endLine = to.ch === 0 && to.line > from.line ? to.line - 1 : to.line;
-    return [from.line, Math.max(endLine, from.line)];
-  }
-
-  /** 把正文里连续的 ![[笔记]] 行合并成一个 cards 块 */
-  private embedsToCards(editor: Editor): void {
-    const content = editor.getValue();
-    const lines = content.split("\n");
-    const [from, to] = this.selectionLineRange(editor);
-
-    const out: string[] = [];
-    let buffer: string[] = [];
-    let converted = 0;
-    const flush = () => {
-      if (!buffer.length) return;
-      out.push("```cards");
-      for (const t of buffer) out.push(`- [[${t}]]`);
-      out.push("```");
-      converted += buffer.length;
-      buffer = [];
-    };
-
-    for (let i = 0; i < lines.length; i++) {
-      if (i < from || i > to) {
-        out.push(lines[i]);
-        continue;
-      }
-      const m = lines[i].match(/^(\s*)(?:[-*+]\s*)?!\[\[([^\]]+)\]\]\s*$/);
-      if (m) {
-        buffer.push(m[2]);
-        continue;
-      }
-      flush();
-      out.push(lines[i]);
-    }
-    flush();
-
-    if (!converted) {
-      new Notice("没有找到独占一行的 ![[...]] 嵌入");
-      return;
-    }
-    editor.setValue(out.join("\n"));
-    new Notice(`已把 ${converted} 处嵌入合并为卡片墙`);
-  }
-
-  /** 选区里的 [[链接]]（列表或正文）→ cards 块 */
-  private linksToCards(editor: Editor): void {
+  /** 选区里的 [[链接]] → 原生嵌入列表 `- ![[链接]]` */
+  private linksToEmbeds(editor: Editor): void {
     const sel = editor.getSelection();
     if (!sel.trim()) {
       new Notice("请先选中包含 [[链接]] 的文本");
@@ -345,8 +189,27 @@ export default class AtomicCardsPlugin extends Plugin {
       new Notice("选区里没有 [[链接]]");
       return;
     }
-    const block = `\`\`\`cards\n${found.map((t) => `- [[${t}]]`).join("\n")}\n\`\`\``;
-    editor.replaceSelection(block);
-    new Notice(`已生成 ${found.length} 张卡片`);
+    editor.replaceSelection(found.map((t) => `- ![[${t}]]`).join("\n"));
+    new Notice(`已插入 ${found.length} 处嵌入`);
+  }
+
+  /** 反查：把引用了本文的笔记以原生嵌入列表插入（静态结果，不是动态渲染） */
+  private insertReverseEmbeds(editor: Editor): void {
+    const file = this.app.workspace.getActiveFile();
+    if (!file) {
+      new Notice("当前没有打开的文件");
+      return;
+    }
+    const links = this.app.metadataCache.resolvedLinks;
+    const refs = Object.keys(links).filter((src) => links[src]?.[file.path]);
+    if (!refs.length) {
+      new Notice("没有笔记引用本文");
+      return;
+    }
+    const text = `被引用在：\n\n${refs
+      .map((r) => `- ![[${r.replace(/\.md$/i, "")}]]`)
+      .join("\n")}\n`;
+    editor.replaceRange(text, editor.getCursor());
+    new Notice(`已插入 ${refs.length} 条引用`);
   }
 }

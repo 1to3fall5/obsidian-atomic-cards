@@ -12,6 +12,18 @@ export class AtomicCardsSettingTab extends PluginSettingTab {
     const s = this.plugin.settings;
     containerEl.empty();
 
+    new Setting(containerEl).setName("行为").setHeading();
+
+    new Setting(containerEl)
+      .setName("接管原生嵌入 ![[ ]]")
+      .setDesc("把独占一行的 ![[笔记]] 嵌入渲染成可折叠卡片；关闭后插件完全不介入，嵌入保持 Obsidian 默认样式")
+      .addToggle((t) =>
+        t.setValue(s.upgradeEmbeds).onChange(async (v) => {
+          s.upgradeEmbeds = v;
+          await this.plugin.saveSettings();
+        })
+      );
+
     new Setting(containerEl).setName("布局").setHeading();
 
     new Setting(containerEl)
@@ -40,7 +52,7 @@ export class AtomicCardsSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("嵌套卡片的尺寸")
-      .setDesc("卡片里再套的卡片墙默认用什么尺寸；块内写 size: 可单独覆盖")
+      .setDesc("卡片里再套的嵌入默认用什么尺寸")
       .addDropdown((d) =>
         d
           .addOption("small", "知识点小卡片（一行多个）")

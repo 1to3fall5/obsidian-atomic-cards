@@ -1,13 +1,14 @@
 export type Density = "compact" | "comfortable";
-export type SortKey = "name" | "updated" | "created" | "none";
 /** wrap = 扁平包裹卡片（横向）；card = 传统竖版卡牌（顶部封面） */
 export type Layout = "wrap" | "card";
-/** normal = 常规文档卡片；small = 知识点 / 段落级小卡片（更窄，一行排多个） */
+/** normal = 常规文档卡片；small = 知识点 / 段落级小卡片 */
 export type Size = "normal" | "small";
 
 export interface AtomicCardsSettings {
+  /** 把 Obsidian 原生 ![[ ]] 块级嵌入渲染成卡片（关闭则完全不介入） */
+  upgradeEmbeds: boolean;
   layout: Layout;
-  /** 嵌套在大卡片里的卡片墙默认尺寸 */
+  /** 嵌套在大卡片里的卡片默认尺寸 */
   nestedSize: Size;
   cardHeight: number;
   summaryLength: number;
@@ -17,7 +18,7 @@ export interface AtomicCardsSettings {
   showOpenButton: boolean;
   /** 卡片默认展开正文 */
   defaultExpanded: boolean;
-  /** 嵌在卡片里的卡片墙是否默认展开 */
+  /** 嵌在卡片里的嵌入是否默认展开 */
   nestedExpanded: boolean;
   maxNestDepth: number;
   density: Density;
@@ -30,9 +31,10 @@ export interface AtomicCardsSettings {
 }
 
 /** 布局相关默认值变更时 +1，旧设置会被新默认值覆盖 */
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
 
 export const DEFAULT_SETTINGS: AtomicCardsSettings = {
+  upgradeEmbeds: true,
   layout: "wrap",
   nestedSize: "normal",
   cardHeight: 0,
@@ -51,43 +53,22 @@ export const DEFAULT_SETTINGS: AtomicCardsSettings = {
   verbose: false,
 };
 
-/** 单个 cards 代码块可覆盖的选项 */
-export interface CardOptions {
-  height?: number;
-  summary?: number;
-  expanded?: boolean;
-  cover?: boolean;
-  meta?: boolean;
-  tags?: boolean;
-  open?: boolean;
-  density?: Density;
-  layout?: Layout;
-  size?: Size;
-  /** 按文件夹筛选，如 wiki/concepts */
-  from?: string;
-  /** 按标签筛选，如 type/concept 或 #type/concept */
-  tag?: string;
-  sort?: SortKey;
-  limit?: number;
-  /** true = 反查：列出所有引用了当前文档的笔记（上层章节） */
-  reverse?: boolean;
-  title?: string;
+/** 渲染单张卡片所需选项，全部来自插件设置（没有块内选项了） */
+export interface RenderOptions {
+  size: Size;
+  density: Density;
+  layout: Layout;
+  cover: boolean;
+  meta: boolean;
+  tags: boolean;
+  open: boolean;
+  expanded: boolean;
+  /** 卡片最大高度，0 = 不限制 */
+  height: number;
+  /** 自动摘要字符数 */
+  summary: number;
 }
 
-export interface CardEntry {
-  target: string;
-  alias?: string;
-}
-
-export interface CardsQuery {
-  options: CardOptions;
-  entries: CardEntry[];
-}
-
-export interface MergedOptions extends Required<Omit<CardOptions, "from" | "tag" | "title" | "sort">> {
-  from: string;
-  tag: string;
-  title: string;
-  sort: SortKey;
-  limit: number;
-}
+/** 非笔记的嵌入（图片 / 音视频 / PDF / 画布等）不做卡片化 */
+export const SKIP_EMBED_EXT =
+  /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif|mp3|wav|ogg|flac|m4a|mp4|webm|mov|pdf|canvas|excalidraw)$/i;

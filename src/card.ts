@@ -1,6 +1,6 @@
 import { App, Component, Notice, setIcon } from "obsidian";
 import { NoteMeta, renderMarkdown } from "./metadata";
-import { AtomicCardsSettings, MergedOptions } from "./types";
+import { AtomicCardsSettings, RenderOptions } from "./types";
 
 export interface CardEnv {
   app: App;
@@ -91,7 +91,7 @@ function buildTagRow(meta: NoteMeta, limit: number): HTMLElement | null {
   return row;
 }
 
-export function renderCard(env: CardEnv, meta: NoteMeta, opts: MergedOptions): HTMLElement {
+export function renderCard(env: CardEnv, meta: NoteMeta, opts: RenderOptions): HTMLElement {
   const isWrap = opts.layout !== "card";
   const isSmall = opts.size === "small";
 
