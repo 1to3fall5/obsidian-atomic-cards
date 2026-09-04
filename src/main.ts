@@ -48,7 +48,6 @@ export default class AtomicCardsPlugin extends Plugin {
       // 布局默认值变了，旧存档要迁移，否则用户端看到的还是旧布局
       if (saved.settingsVersion !== SETTINGS_VERSION) {
         Object.assign(saved, {
-          columns: DEFAULT_SETTINGS.columns,
           layout: DEFAULT_SETTINGS.layout,
           nestedSize: DEFAULT_SETTINGS.nestedSize,
           defaultExpanded: DEFAULT_SETTINGS.defaultExpanded,
@@ -76,9 +75,6 @@ export default class AtomicCardsPlugin extends Plugin {
     const size: Size = o.size ?? (nested ? s.nestedSize : "normal");
     const isSmall = size === "small";
     return {
-      // 所有层级默认一张卡片占一整行；要横排网格就写 columns: 0 或具体列数
-      columns: o.columns ?? s.columns,
-      width: o.width || (isSmall ? 150 : s.minCardWidth),
       height: o.height ?? s.cardHeight,
       summary: o.summary ?? (isSmall ? 90 : s.summaryLength),
       expanded: o.expanded ?? (nested ? s.nestedExpanded : s.defaultExpanded),
@@ -108,11 +104,9 @@ export default class AtomicCardsPlugin extends Plugin {
     const root = el.createDiv({ cls: "ac-root" });
     if (opts.title) root.createDiv({ cls: "ac-root__title", text: opts.title });
 
+    // 卡片墙固定单列：一行一张、占满宽度（不做分列 / 自适应网格）
     const grid = root.createDiv({ cls: `ac-grid ac-grid--${opts.size}` });
-    grid.style.gridTemplateColumns =
-      opts.columns > 0
-        ? `repeat(${opts.columns}, minmax(0, 1fr))`
-        : `repeat(auto-fill, minmax(${opts.width}px, 1fr))`;
+    grid.style.gridTemplateColumns = "1fr";
 
     if (depth >= this.settings.maxNestDepth) {
       grid.createDiv({

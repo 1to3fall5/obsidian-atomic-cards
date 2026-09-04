@@ -400,10 +400,6 @@
 
 /* ------------------------------- 响应式 ------------------------------- */
 @media (max-width: 700px) {
-  .ac-grid {
-    grid-template-columns: 1fr !important;
-  }
-
   /* 窄屏隐藏标签和徽章，保证标题和按钮放得下 */
   .ac-card__tags,
   .ac-card__meta {

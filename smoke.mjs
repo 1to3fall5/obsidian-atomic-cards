@@ -38,9 +38,13 @@ const eq = (name, actual, expected) =>
 
 /* ---------- parser ---------- */
 const q1 = parser.parseCardsBlock(
-  ["columns: 3", "title: 本章引用的原子文档", "---", "- [[A]]", "- ![[B]]", "- [[C|别名]]", "- 纯文本标题"].join("\n")
+  ["title: 本章引用的原子文档", "---", "- [[A]]", "- ![[B]]", "- [[C|别名]]", "- 纯文本标题"].join("\n")
 );
-eq("options 解析", q1.options, { columns: 3, title: "本章引用的原子文档" });
+eq("options 解析", q1.options, { title: "本章引用的原子文档" });
+
+// 分列已移除：columns / width 不再被解析，卡片墙固定单列
+eq("columns 不再解析", parser.parseCardsBlock("columns: 3").options, {});
+eq("width 不再解析", parser.parseCardsBlock("width: 240").options, {});
 eq("entries 解析", q1.entries, [
   { target: "A" },
   { target: "B" },

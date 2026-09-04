@@ -7,13 +7,6 @@ function applyOption(opts: CardOptions, rawKey: string, rawValue: string) {
   const value = rawValue.trim().replace(/^["']|["']$/g, "");
 
   switch (key) {
-    case "columns":
-    case "cols":
-      opts.columns = Number(value) || 0;
-      break;
-    case "width":
-      opts.width = Number(value) || 0;
-      break;
     case "height":
       opts.height = Number(value) || 0;
       break;
@@ -95,7 +88,7 @@ function parseEntry(line: string): CardEntry | null {
 /**
  * 解析 cards 代码块内容。
  * 支持形如：
- *   columns: 3
+ *   title: 本章引用的原子文档
  *   ---
  *   - [[笔记A]]
  *   - [[笔记B|自定义标题]]

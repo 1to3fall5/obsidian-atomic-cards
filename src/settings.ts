@@ -15,26 +15,6 @@ export class AtomicCardsSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName("布局").setHeading();
 
     new Setting(containerEl)
-      .setName("默认列数")
-      .setDesc("1 = 每张卡片占一整行（默认）；0 = 自适应网格；其他数字 = 固定列数")
-      .addText((t) =>
-        t.setValue(String(s.columns)).onChange(async (v) => {
-          s.columns = Number(v) || 0;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName("最小卡片宽度 (px)")
-      .setDesc("自适应模式下每张卡片的最小宽度")
-      .addText((t) =>
-        t.setValue(String(s.minCardWidth)).onChange(async (v) => {
-          s.minCardWidth = Number(v) || 260;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
       .setName("卡片最大高度 (px)")
       .setDesc("0 = 不限制；超过后卡片内部滚动")
       .addText((t) =>

@@ -6,12 +6,9 @@ export type Layout = "wrap" | "card";
 export type Size = "normal" | "small";
 
 export interface AtomicCardsSettings {
-  /** 列数：1 = 每张卡片占一整行；0 = 自适应网格 */
-  columns: number;
   layout: Layout;
   /** 嵌套在大卡片里的卡片墙默认尺寸 */
   nestedSize: Size;
-  minCardWidth: number;
   cardHeight: number;
   summaryLength: number;
   showCover: boolean;
@@ -36,10 +33,8 @@ export interface AtomicCardsSettings {
 export const SETTINGS_VERSION = 2;
 
 export const DEFAULT_SETTINGS: AtomicCardsSettings = {
-  columns: 1,
   layout: "wrap",
   nestedSize: "normal",
-  minCardWidth: 240,
   cardHeight: 0,
   summaryLength: 180,
   showCover: true,
@@ -58,8 +53,6 @@ export const DEFAULT_SETTINGS: AtomicCardsSettings = {
 
 /** 单个 cards 代码块可覆盖的选项 */
 export interface CardOptions {
-  columns?: number;
-  width?: number;
   height?: number;
   summary?: number;
   expanded?: boolean;
