@@ -43,6 +43,11 @@ export default class AtomicCardsPlugin extends Plugin {
 
       this.registerCommands();
 
+      // ⚠️ 不要注册 CodeMirror 扩展（src/editor.ts）：@codemirror/* 必须是 external，
+      // 一旦打包就会出现两份 @codemirror/state，导致
+      // "Unrecognized extension value ... multiple instances" 而整个插件加载失败。
+      // Live Preview 的卡片外观改由 snippet 的 CSS 方案实现（见第五节）。
+
       // 接管拖放：从文件列表拖笔记进来 → 插入 ![[ ]] 而不是默认的 [[ ]]。
       // ⚠️ 不能用 workspace 的 "editor-drop" 事件：实测拖 Obsidian 内部文件时它不触发。
       // 改监听 DOM 的原生 drop（capture 阶段），一定能拿到。

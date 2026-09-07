@@ -18,6 +18,10 @@ const ctx = await esbuild.context({
   format: "cjs",
   target: "es2018",
   platform: "browser",
+  // ⚠️ @codemirror/* 与 @lezer/* 只能设为 external，不能打包：
+  // 打包会让产物里出现第二份 @codemirror/state，与 Obsidian 自带的那份冲突，
+  // 报 "multiple instances of @codemirror/state ... breaking instanceof checks"。
+  // 这也意味着插件**不能**注册 CodeMirror 扩展（见 src/editor.ts 的说明）。
   external: ["obsidian", "electron", "node:*", "@codemirror/*", "@lezer/*"],
   outfile: path.join(outDir, "main.js"),
   sourcemap: "inline",
