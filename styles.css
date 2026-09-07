@@ -23,6 +23,7 @@
 /* --------------------------- 卡片：公共骨架 ---------------------------- */
 .ac-card {
   --ac-card-h: auto;
+  position: relative; /* 放置指示线的定位基准 */
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -58,6 +59,25 @@
 }
 .ac-card.is-dragging {
   opacity: 0.4;
+}
+
+/* 重排时的放置指示线：拖到卡片上半 → 插到它前面，下半 → 后面 */
+.ac-card.ac-drop-before::before,
+.ac-card.ac-drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--interactive-accent);
+  pointer-events: none;
+}
+.ac-card.ac-drop-before::before {
+  top: -6px;
+}
+.ac-card.ac-drop-after::after {
+  bottom: -6px;
 }
 
 .ac-card.is-expanded {

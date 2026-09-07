@@ -5,8 +5,9 @@ import {
   MarkdownView,
   Notice,
   Plugin,
+  TFile,
 } from "obsidian";
-import { renderCard, getNest, withNest } from "./card";
+import { renderCard, getNest, withNest, ReorderRequest, isCardReorderDrag } from "./card";
 import { readNoteMeta } from "./metadata";
 import { AtomicCardsSettingTab } from "./settings";
 import {
@@ -170,6 +171,7 @@ export default class AtomicCardsPlugin extends Plugin {
       component,
       // +1：卡片正文里再渲染的内容属于下一层，递增后嵌套深度上限才有效
       depth: depth + 1,
+      onReorder: (req: ReorderRequest) => void this.reorderEmbeds(ctx.sourcePath, req),
     };
 
     // ⚠️ 先同步占住位置，再异步生成真正的卡片。
@@ -210,6 +212,9 @@ export default class AtomicCardsPlugin extends Plugin {
 
     // ⚠️ 不能用 activeEditor()：拖拽时活动视图往往还停在文件资源管理器（拖拽源），
     //    取不到目标编辑器。要从 drop 的目标元素反查它属于哪个编辑器。
+    // 卡片正在被拖去重排 → 不要触发链接改写，否则会把刚挪好的嵌入又改乱
+    if (isCardReorderDrag()) return;
+
     const editor = this.editorFromDrop(evt) ?? this.activeEditor();
     if (!editor) {
       if (this.settings.verbose) console.log("[atomic-cards] 找不到目标编辑器");
@@ -221,6 +226,52 @@ export default class AtomicCardsPlugin extends Plugin {
     for (const delay of [80, 250, 600]) {
       window.setTimeout(() => this.linkToEmbedAtCursor(editor), delay);
     }
+  }
+
+  /* ---------- 重排：把源码里的 ![[source]] 行搬到 ![[target]] 的前/后 ----------
+     直接改文件（vault.process），阅读模式和编辑模式都能用。
+     只做整行搬运，不匹配就原样返回，不会损坏文件。 */
+  private async reorderEmbeds(sourcePath: string, req: ReorderRequest): Promise<void> {
+    const file = this.app.vault.getAbstractFileByPath(sourcePath);
+    if (!(file instanceof TFile)) return;
+
+    const verbose = this.settings.verbose;
+    if (verbose) console.log("[atomic-cards] reorder:", req, "→", sourcePath);
+
+    await this.app.vault.process(file, (data) => {
+      const lines = data.split("\n");
+      const from = lines.findIndex((l) => this.lineEmbeds(l, req.source));
+      if (from < 0) {
+        if (verbose) console.log("[atomic-cards] 找不到源嵌入行：", req.source);
+        return data;
+      }
+      const [moved] = lines.splice(from, 1);
+      const to = lines.findIndex((l) => this.lineEmbeds(l, req.target));
+      if (to < 0) {
+        if (verbose) console.log("[atomic-cards] 找不到目标嵌入行：", req.target);
+        return data;
+      }
+      lines.splice(req.before ? to : to + 1, 0, moved);
+      if (verbose) console.log("[atomic-cards] 移动行", from, "→", to);
+      return lines.join("\n");
+    });
+
+    new Notice(`已把「${req.source}」移到「${req.target}」${req.before ? "之前" : "之后"}`);
+  }
+
+  /**
+   * 这一行是否是 name 的嵌入。
+   * ⚠️ 笔记名是短名（灯光-烘焙），但源码里可能写成完整路径
+   * （![[wiki-ai/…/灯光-烘焙]]），也可能带别名或小节引用，都要认。
+   */
+  private lineEmbeds(line: string, name: string): boolean {
+    const t = line.trim();
+    if (!t.startsWith("![[")) return false;
+    const end = t.indexOf("]]");
+    if (end < 0) return false;
+    const inner = t.slice(3, end);
+    const target = inner.split("|")[0].split("#")[0].trim().replace(/\.md$/i, "");
+    return target === name || target.endsWith(`/${name}`);
   }
 
   /** 从拖放目标元素反查所属编辑器的 Editor 实例 */

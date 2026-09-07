@@ -2,6 +2,15 @@ import { App, Component, Notice, setIcon } from "obsidian";
 import { NoteMeta, renderMarkdown } from "./metadata";
 import { AtomicCardsSettings, RenderOptions } from "./types";
 
+export interface ReorderRequest {
+  /** 被拖动的笔记名 */
+  source: string;
+  /** 放置目标笔记名 */
+  target: string;
+  /** true = 插到目标之前，false = 之后 */
+  before: boolean;
+}
+
 export interface CardEnv {
   app: App;
   settings: AtomicCardsSettings;
@@ -9,9 +18,36 @@ export interface CardEnv {
   component: Component;
   /** 当前嵌套层级，用于递归渲染时限制深度 */
   depth: number;
+  /** 把卡片拖到另一张卡片上重排时回调（由插件去改源码里的嵌入顺序） */
+  onReorder?: (req: ReorderRequest) => void;
+}
+
+/** dataTransfer 里的自定义类型：标记"这是本插件的卡片在拖" */
+export const AC_CARD_MIME = "application/x-atomic-cards";
+
+/**
+ * 拖拽中卡片的父容器。
+ * 用于限制"只有同级卡片"才能互相当放置目标——否则拖嵌套小卡片时，
+ * 事件冒泡到外层大卡片会把指示线画错位置。
+ */
+let dragSourceParent: HTMLElement | null = null;
+
+export function setDragSourceParent(el: HTMLElement | null): void {
+  dragSourceParent = el;
+}
+
+export function isCardReorderDrag(): boolean {
+  return dragSourceParent !== null;
 }
 
 let nestMarker = 0;
+
+/**
+ * 记住每张卡片的展开状态。
+ * 重排 / 文件保存会触发重新渲染，若每次都回落到设置默认值，
+ * 用户刚收起的卡片又会全部弹开。这里按笔记记下最后一次的手动操作。
+ */
+const expandMemory = new Map<string, boolean>();
 
 export function getNest(): number {
   return nestMarker;
@@ -198,6 +234,7 @@ export function renderCard(env: CardEnv, meta: NoteMeta, opts: RenderOptions): H
   card.appendChild(body);
 
   /* ---------- 展开 / 收起 ---------- */
+  const memoryKey = meta.file?.path ?? meta.target;
   let expanded = false;
   const setExpanded = (next: boolean) => {
     expanded = next;
@@ -206,6 +243,7 @@ export function renderCard(env: CardEnv, meta: NoteMeta, opts: RenderOptions): H
     setIcon(toggleIcon, expanded ? "chevron-up" : "chevron-down");
     body.style.display = expanded ? "" : "none";
     if (expanded) loadBody();
+    expandMemory.set(memoryKey, expanded);
   };
 
   toggleBtn.addEventListener("click", () => setExpanded(!expanded));
@@ -231,19 +269,86 @@ export function renderCard(env: CardEnv, meta: NoteMeta, opts: RenderOptions): H
      Obsidian 原生从文件列表拖进来只能得到 [[链接]]，得不到嵌入。
      这里让卡片自己可以被拖走，放到编辑器即生成 ![[笔记]]。
      只让头部可拖：正文区要留给选中复制和折叠点击。 */
+  const selfName = meta.file?.basename ?? meta.target;
+
   head.draggable = true;
   head.addEventListener("dragstart", (e) => {
     if (!meta.file) return;
-    const name = meta.file.basename;
-    // 段落级引用保留 #标题 / #^块id
-    const link = meta.ref ? `![[${name}#${meta.ref}]]` : `![[${name}]]`;
+    const link = meta.ref ? `![[${selfName}#${meta.ref}]]` : `![[${selfName}]]`;
+    // 同时给两种数据：自定义类型用于卡片间重排，text/plain 用于拖到正文插入
+    e.dataTransfer?.setData(AC_CARD_MIME, selfName);
     e.dataTransfer?.setData("text/plain", link);
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "copy";
+    // 记下源卡片的父容器：只有同级卡片才能互相当放置目标
+    setDragSourceParent(card.parentElement);
     card.classList.add("is-dragging");
   });
-  head.addEventListener("dragend", () => card.classList.remove("is-dragging"));
 
-  if (opts.expanded) setExpanded(true);
+  head.addEventListener("dragend", () => {
+    card.classList.remove("is-dragging");
+    setDragSourceParent(null);
+    clearDropMarks();
+  });
+
+  /* ---------- 作为放置目标：拖另一张卡片过来 → 重排 ---------- */
+  const clearDropMarks = () => {
+    for (const el of Array.from(document.querySelectorAll(".ac-drop-before, .ac-drop-after"))) {
+      el.classList.remove("ac-drop-before", "ac-drop-after");
+    }
+  };
+
+  card.addEventListener("dragover", (e) => {
+    const dt = e.dataTransfer;
+    if (!dt || !Array.from(dt.types).includes(AC_CARD_MIME)) return;
+    // 已经在拖的是自己 → 不接收
+    if (card.classList.contains("is-dragging")) return;
+    // ⚠️ 嵌套卡片的事件会冒泡到外层大卡片。事件目标最近的 .ac-card
+    //    必须是自己，否则拖小卡片时指示线会画到大卡片上。
+    const nearest = (e.target as HTMLElement).closest?.(".ac-card");
+    if (nearest !== card) return;
+    // ⚠️ 只允许同级（同父容器）排序：拖嵌套小卡片时不影响外层，
+    //    鼠标落在小卡片间隙时 target 会是大卡片/空白，父容器不同直接忽略。
+    if (card.parentElement !== dragSourceParent) return;
+    e.preventDefault();
+    if (dt.dropEffect) dt.dropEffect = "move";
+    const box = card.getBoundingClientRect();
+    const before = e.clientY < box.top + box.height / 2;
+    card.classList.toggle("ac-drop-before", before);
+    card.classList.toggle("ac-drop-after", !before);
+  });
+
+  card.addEventListener("dragleave", () => {
+    card.classList.remove("ac-drop-before", "ac-drop-after");
+  });
+
+  card.addEventListener("drop", (e) => {
+    const dt = e.dataTransfer;
+    const source = dt?.getData(AC_CARD_MIME) ?? "";
+    card.classList.remove("ac-drop-before", "ac-drop-after");
+    if (env.settings.verbose) {
+      console.log("[atomic-cards] card drop:", {
+        source,
+        target: selfName,
+        types: dt ? Array.from(dt.types) : null,
+      });
+    }
+    if (!source || source === selfName) return;
+    // 同 dragover：只认最近卡片是自己的 drop，且必须是同级卡片
+    const nearest = (e.target as HTMLElement).closest?.(".ac-card");
+    if (nearest !== card) return;
+    if (card.parentElement !== dragSourceParent) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const box = card.getBoundingClientRect();
+    env.onReorder?.({
+      source,
+      target: selfName,
+      before: e.clientY < box.top + box.height / 2,
+    });
+  });
+
+  // 有记录就恢复上次状态，没有记录才用设置里的默认值
+  if (expandMemory.get(memoryKey) ?? opts.expanded) setExpanded(true);
 
   return card;
 }
