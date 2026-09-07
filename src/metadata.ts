@@ -36,12 +36,19 @@ export function toPlainText(body: string): string {
     .replace(/^\s*>\s*\[!\w+[^\]]*\].*$/gm, "")
     .replace(/!\[\[[^\]]*\]\]/g, "")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    // HTML 注释：iWiki 抓取的条目普遍带 <!-- 来源 iwiki docid:xxx -->，
+    // 不清掉的话它会原样出现在卡片摘要里。
+    .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/\[\[([^\]|]+)\|?([^\]]*)\]\]/g, (_m, a: string, b: string) => b || a)
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/^\s{0,3}#{1,6}\s+.*$/gm, "")
     .replace(/^\s{0,3}>\s?/gm, "")
     .replace(/^\s*[-*+]\s+/gm, "")
     .replace(/^\s*\d+\.\s+/gm, "")
+    // 表格：先删掉 | --- | 这类分隔行，再把剩下的竖线变成空格，
+    // 否则以表格为主的条目摘要会变成一串管道符。
+    .replace(/^\s*\|?[\s:|-]+\|?\s*$/gm, "")
+    .replace(/\|/g, " ")
     .replace(/[*_`~=]/g, "")
     .replace(/\s+/g, " ")
     .trim();

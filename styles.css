@@ -49,6 +49,17 @@
   color: var(--text-faint);
 }
 
+/* 拖拽：头部可拖走（拖到正文生成 ![[ ]] 嵌入） */
+.ac-card__head[draggable="true"] {
+  cursor: grab;
+}
+.ac-card__head[draggable="true"]:active {
+  cursor: grabbing;
+}
+.ac-card.is-dragging {
+  opacity: 0.4;
+}
+
 .ac-card.is-expanded {
   max-height: none;
   overflow: visible;

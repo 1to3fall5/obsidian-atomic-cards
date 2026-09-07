@@ -63,6 +63,25 @@ check("去掉 callout 标题行", !text.includes("[!gap]"), text);
 check("保留 callout 正文", text.includes("这一行是引用正文"), text);
 check("去掉图片语法", !text.includes("cover.png"), text);
 
+/* ---------- iWiki 抓取条目的典型噪音：HTML 注释 + 表格 ---------- */
+const messy = [
+  "# 标题",
+  "",
+  "<!-- 来源 iwiki docid:4016733618 -->",
+  "",
+  "| 类型 | 常见问题 |",
+  "| - | - |",
+  "| 运行崩溃 | 重新烘焙 |",
+  "",
+  "这是正常段落。",
+].join("\n");
+const mt = metadata.toPlainText(messy);
+check("去掉 HTML 注释", !mt.includes("docid") && !mt.includes("-->"), mt);
+check("去掉表格分隔行", !mt.includes("- -"), mt);
+check("表格竖线转空格", !mt.includes("|"), mt);
+check("保留表格文字", mt.includes("运行崩溃") && mt.includes("重新烘焙"), mt);
+check("保留正常段落", mt.includes("这是正常段落"), mt);
+
 /* ---------- 段落级引用 ---------- */
 const lines = [
   "# Title",

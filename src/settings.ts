@@ -24,6 +24,16 @@ export class AtomicCardsSettingTab extends PluginSettingTab {
         })
       );
 
+    new Setting(containerEl)
+      .setName("拖入笔记时插入嵌入 ![[ ]]")
+      .setDesc("从文件列表把笔记拖进编辑器时插入 ![[ ]]（会渲染成卡片）；关闭则保持 Obsidian 默认的 [[ ]] 链接")
+      .addToggle((t) =>
+        t.setValue(s.embedOnDrop).onChange(async (v) => {
+          s.embedOnDrop = v;
+          await this.plugin.saveSettings();
+        })
+      );
+
     new Setting(containerEl).setName("布局").setHeading();
 
     new Setting(containerEl)
@@ -107,6 +117,12 @@ export class AtomicCardsSettingTab extends PluginSettingTab {
       "卡片里再套的卡片墙是否默认展开；关闭时只显示标题和摘要",
       () => s.nestedExpanded,
       (v) => (s.nestedExpanded = v)
+    );
+    toggle(
+      "详细日志",
+      "在开发者控制台（Ctrl+Shift+I）输出运行日志，排查用；平时可关",
+      () => s.verbose,
+      (v) => (s.verbose = v)
     );
 
     new Setting(containerEl)

@@ -227,6 +227,22 @@ export function renderCard(env: CardEnv, meta: NoteMeta, opts: RenderOptions): H
     setExpanded(!expanded);
   });
 
+  /* ---------- 拖拽：从卡片头部拖到正文，插入 ![[ ]] 嵌入 ----------
+     Obsidian 原生从文件列表拖进来只能得到 [[链接]]，得不到嵌入。
+     这里让卡片自己可以被拖走，放到编辑器即生成 ![[笔记]]。
+     只让头部可拖：正文区要留给选中复制和折叠点击。 */
+  head.draggable = true;
+  head.addEventListener("dragstart", (e) => {
+    if (!meta.file) return;
+    const name = meta.file.basename;
+    // 段落级引用保留 #标题 / #^块id
+    const link = meta.ref ? `![[${name}#${meta.ref}]]` : `![[${name}]]`;
+    e.dataTransfer?.setData("text/plain", link);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "copy";
+    card.classList.add("is-dragging");
+  });
+  head.addEventListener("dragend", () => card.classList.remove("is-dragging"));
+
   if (opts.expanded) setExpanded(true);
 
   return card;

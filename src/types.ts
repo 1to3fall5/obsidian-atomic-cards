@@ -7,6 +7,8 @@ export type Size = "normal" | "small";
 export interface AtomicCardsSettings {
   /** 把 Obsidian 原生 ![[ ]] 块级嵌入渲染成卡片（关闭则完全不介入） */
   upgradeEmbeds: boolean;
+  /** 从文件列表拖笔记到编辑器时插入 ![[ ]] 嵌入，而不是默认的 [[ ]] 链接 */
+  embedOnDrop: boolean;
   layout: Layout;
   /** 嵌套在大卡片里的卡片默认尺寸 */
   nestedSize: Size;
@@ -35,6 +37,7 @@ export const SETTINGS_VERSION = 3;
 
 export const DEFAULT_SETTINGS: AtomicCardsSettings = {
   upgradeEmbeds: true,
+  embedOnDrop: true,
   layout: "wrap",
   nestedSize: "normal",
   cardHeight: 0,

@@ -41,6 +41,12 @@ export default class AtomicCardsPlugin extends Plugin {
       );
 
       this.registerCommands();
+
+      // 接管拖放：从文件列表拖笔记进来 → 插入 ![[ ]] 而不是默认的 [[ ]]。
+      // ⚠️ 不能用 workspace 的 "editor-drop" 事件：实测拖 Obsidian 内部文件时它不触发。
+      // 改监听 DOM 的原生 drop（capture 阶段），一定能拿到。
+      this.registerDomEvent(document, "drop", (evt: DragEvent) => this.onDomDrop(evt), true);
+
       if (this.settings.verbose) {
         console.log("[atomic-cards] 已加载，upgradeEmbeds =", this.settings.upgradeEmbeds);
       }
@@ -182,6 +188,120 @@ export default class AtomicCardsPlugin extends Plugin {
 
     const card = withNest(depth, () => renderCard(env, meta, opts));
     placeholder.replaceWith(card);
+  }
+
+  /* =======================================================================
+   * 拖放：让"拖笔记进来"默认得到嵌入 ![[ ]]
+   * ===================================================================== */
+
+  private onDomDrop(evt: DragEvent): void {
+    if (!this.settings.embedOnDrop) return;
+
+    // 日志必须打在最前面：否则无法区分"事件没触发"和"被下面的判断挡掉了"
+    const t = evt.target;
+    if (this.settings.verbose) {
+      console.log("[atomic-cards] dom drop:", {
+        target: t instanceof Element ? `${t.tagName}.${t.className}` : String(t),
+        inEditor: !!(t instanceof Element && t.closest(".markdown-source-view, .cm-editor, .cm-content")),
+        types: evt.dataTransfer ? Array.from(evt.dataTransfer.types) : null,
+        text: evt.dataTransfer?.getData("text/plain") ?? "",
+      });
+    }
+
+    // ⚠️ 不能用 activeEditor()：拖拽时活动视图往往还停在文件资源管理器（拖拽源），
+    //    取不到目标编辑器。要从 drop 的目标元素反查它属于哪个编辑器。
+    const editor = this.editorFromDrop(evt) ?? this.activeEditor();
+    if (!editor) {
+      if (this.settings.verbose) console.log("[atomic-cards] 找不到目标编辑器");
+      return;
+    }
+
+    // 不阻止默认行为：让 Obsidian 正常插入链接，稍后改写成 ![[笔记]]。
+    // Obsidian 插入可能是异步的，分几次试探（改写过就不会再匹配，安全）。
+    for (const delay of [80, 250, 600]) {
+      window.setTimeout(() => this.linkToEmbedAtCursor(editor), delay);
+    }
+  }
+
+  /** 从拖放目标元素反查所属编辑器的 Editor 实例 */
+  private editorFromDrop(evt: DragEvent): Editor | null {
+    const target = evt.target;
+    if (!(target instanceof Element)) return null;
+    // 用数组收集：闭包里给 let 变量赋值会被 TS 收窄成 never
+    const hits: MarkdownView[] = [];
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      const view = leaf.view;
+      if (view instanceof MarkdownView && view.containerEl.contains(target)) hits.push(view);
+    });
+    return hits[0]?.editor ?? null;
+  }
+
+  /**
+   * 把光标前刚插入的链接就地改写成 ![[笔记]]。
+   * 拖 Obsidian 内部文件时，原生可能插入三种形态，都要认：
+   *   ① [[笔记]]               （wikilink 设置）
+   *   ② [标题](obsidian://…)   （实测默认走这种，dataTransfer 里是 obsidian:// URL）
+   *   ③ obsidian://… 裸链接
+   * 都不是就原样放过，避免误伤拖图片 / 外部文本。
+   */
+  private linkToEmbedAtCursor(editor: Editor): void {
+    const cur = editor.getCursor();
+    const line = editor.getLine(cur.line) ?? "";
+    const head = line.slice(0, cur.ch);
+
+    if (this.settings.verbose) {
+      console.log("[atomic-cards] 光标前文本：", JSON.stringify(head.slice(-120)));
+    }
+
+    const replace = (matched: string, name: string) => {
+      const from = { line: cur.line, ch: cur.ch - matched.length };
+      editor.replaceRange(`![[${name}]]`, from, cur);
+      if (this.settings.verbose) {
+        console.log("[atomic-cards] 链接改写为嵌入：", matched, "→", `![[${name}]]`);
+      }
+    };
+
+    // ① wikilink（且前面不是 !，避免重复改写）
+    const wiki = head.match(/(?:^|[^!])(\[\[[^\]]+\]\])$/);
+    if (wiki) {
+      const inner = wiki[1].slice(2, -2).split("|")[0].trim();
+      if (inner) {
+        replace(wiki[1], inner);
+        return;
+      }
+    }
+
+    // ② markdown 链接，href 是 obsidian:// URL
+    const md = head.match(/\[[^\]]*\]\(([^)]+)\)$/);
+    if (md) {
+      const name = this.noteNameFromObsidianUrl(md[1]);
+      if (name) {
+        replace(md[0], name);
+        return;
+      }
+      return;
+    }
+
+    // ③ 裸 obsidian:// 链接
+    const bare = head.match(/(obsidian:\/\/\S+)$/);
+    if (bare) {
+      const name = this.noteNameFromObsidianUrl(bare[1]);
+      if (name) replace(bare[1], name);
+    }
+  }
+
+  /** 从 obsidian://open?vault=X&file=<path> 里取出笔记名（去掉文件夹与 .md） */
+  private noteNameFromObsidianUrl(url: string): string | null {
+    try {
+      const u = new URL(url);
+      const file = u.searchParams.get("file");
+      if (!file) return null;
+      const decoded = decodeURIComponent(file);
+      const base = decoded.split("/").pop()?.replace(/\.md$/i, "").trim() ?? "";
+      return base || null;
+    } catch {
+      return null;
+    }
   }
 
   /* =======================================================================
